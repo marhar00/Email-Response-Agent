@@ -80,44 +80,9 @@ Zasady:
   niezależnie od sposobu dostawy.
 - Jezeli klient pyta się o dostawę i wspomni o zagranicznych to zawsze dopisz do policy_questions 'international_delivery' "
 """
-FEWSHOT_EXTRACTION = """
-Poniżej przykłady par (e-mail klienta -> poprawna ekstrakcja JSON). Traktuj je jako wzorzec
-rozumowania i formatu, NIE jako źródło danych dla bieżącego maila.
- 
-Przykład 1
-E-mail: "Dzień dobry, poszukuję bezalkoholowych świątecznych zestawów dla pracowników, ok. 30 sztuk do 150 zł/1 osoba i ok. 10 sztuk do 200 zł/osoba. Czy mogą nam Państwo coś zaproponować?"
-Ekstrakcja: {"products": [{"description": "bezalkoholowy świąteczny zestaw prezentowy dla pracowników", "quantity": 30, "alcohol": "none", "price_max": 150, "price_basis": "brutto", "price_per": "person", "price_includes_delivery": false, "delivery": "unspecified"}, {"description": "bezalkoholowy świąteczny zestaw prezentowy dla pracowników", "quantity": 10, "alcohol": "none", "price_max": 200, "price_basis": "brutto", "price_per": "person", "price_includes_delivery": false, "delivery": "unspecified"}], "deadline": null, "policy_questions": [], "intent": "inquiry"}
-(Uwaga: "bezalkoholowych" dotyczy obu pozycji -> alcohol="none" w obu produktach.)
-
-Przykład 2
-E-mail: "Dzień dobry. Potrzebuję 30 koszy prezentowych za ok 200 PLN netto – z tym, że w środku musi być jack daniels czarny 0,7l + jakieś słodycze. Proszę o podanie terminu realizacji."
-Ekstrakcja: {"products": [{"description": "kosz prezentowy z whisky Jack Daniel's czarny 0,7l i słodyczami", "quantity": 30, "alcohol": "specific", "alcohol_detail": "Jack Daniel's czarny 0,7l", "price_max": 200, "price_basis": "netto", "price_per": "piece", "price_includes_delivery": false, "delivery": "unspecified"}], "deadline": null, "policy_questions": ["delivery_time"], "intent": "inquiry"}
-
-Przykład 3
-E-mail: "Dzień Dobry, chciałabym zamówić 2 zestawy dla dzieci ze słodyczami. Czy mogą państwo coś zaproponować?"
-Ekstrakcja: {"products": [{"description": "zestaw prezentowy dla dzieci ze słodyczami", "quantity": 2, "alcohol": "none", "price_basis": "brutto", "price_per": "piece", "price_includes_delivery": false, "delivery": "unspecified"}], "deadline": null, "policy_questions": [], "intent": "inquiry"}
-(Uwaga: klient użył słowa "zamówić", ale opisuje, czego chce, zamiast podać konkretny produkt -> intent="inquiry", nie "order". Zestaw dla dzieci -> alcohol="none". Brak budżetu -> price_min i price_max puste.)
-
-Przykład 4
-E-mail: "Dzień dobry. Chciałabym zamówić 12 koszy prezentowych świątecznych do 150 zł brutto oraz 2 kosze świąteczne do 200 zł brutto oba łącznie z dostawą. Czy mogli by Państwo coś zaproponować? Jaki jest średni czas realizacji zamówienia? Dodatkowo czy mogą Państwo wysłać paczki na rózne adresy?"
-Ekstrakcja: {"products": [{"description": "świąteczny kosz prezentowy", "quantity": 12, "alcohol": "any", "price_max": 150, "price_basis": "brutto", "price_per": "piece", "price_includes_delivery": true, "delivery": "unspecified"}, {"description": "świąteczny kosz prezentowy", "quantity": 2, "alcohol": "any", "price_max": 200, "price_basis": "brutto", "price_per": "piece", "price_includes_delivery": true, "delivery": "unspecified"}], "deadline": null, "policy_questions": ["delivery_time", "different_addreses"], "intent": "inquiry"}
-(Uwaga: klient tylko pyta o różne adresy, nie deklaruje takiej wysyłki -> delivery="unspecified", a pytanie trafia do policy_questions.)
-
-Przykład 5
-E-mail: "Dzień dobry, Jesteśmy zainteresowani zakupem 30 upominków dla naszych kontrahentów w kolorystyce niebieskiej, w tym 19 zestawów z opcją wysyłki na wskazany adres i 11 zestawów z dostawą do naszego magazynu do Włocławka. Proszę o propozycję z alkoholem – wino + słodycze + kawa/herbata do wyboru w budżecie około 160-170 zł netto już z wysyłką - podobne do: SU42 Prezent z prosecco, SU44 Prezent dla kobiet, SG88 Zimowa uczta, MC37 Błękitna niespodzianka. Proszę też o informację, jaki jest koszt za usługę wysyłki na wskazane adresy. Czy możemy poprosić Państwa o wydrukowanie i dołączenie bileciku?"
-Ekstrakcja: {"products": [{"name": "SU42 Prezent z prosecco", "description": "upominek dla kontrahentów w kolorystyce niebieskiej: wino, słodycze, kawa lub herbata do wyboru", "quantity": 30, "alcohol": "required", "alcohol_detail": "wino", "price_max": 170, "price_basis": "netto", "price_per": "piece", "price_includes_delivery": true, "delivery": "to_addresses"}, {"name": "SU44 Prezent dla kobiet", "description": "upominek dla kontrahentów w kolorystyce niebieskiej: wino, słodycze, kawa lub herbata do wyboru", "quantity": 30, "alcohol": "required", "alcohol_detail": "wino", "price_max": 170, "price_basis": "netto", "price_per": "piece", "price_includes_delivery": true, "delivery": "to_addresses"}, {"name": "SG88 Zimowa uczta", "description": "upominek dla kontrahentów w kolorystyce niebieskiej: wino, słodycze, kawa lub herbata do wyboru", "quantity": 30, "alcohol": "required", "alcohol_detail": "wino", "price_max": 170, "price_basis": "netto", "price_per": "piece", "price_includes_delivery": true, "delivery": "to_addresses"}, {"name": "MC37 Błękitna niespodzianka", "description": "upominek dla kontrahentów w kolorystyce niebieskiej: wino, słodycze, kawa lub herbata do wyboru", "quantity": 30, "alcohol": "required", "alcohol_detail": "wino", "price_max": 170, "price_basis": "netto", "price_per": "piece", "price_includes_delivery": true, "delivery": "to_addresses"}], "deadline": null, "policy_questions": ["shipping_cost", "personalization"], "intent": "inquiry"}
-(Uwaga: klient wymienia KONKRETNE produkty referencyjne -> każdy staje się osobnym produktem z tymi samymi wymaganiami. Wszystkie elementy, które klient chce w koszu (wino, słodycze, kawa/herbata, kolor niebieski), trafiają do description KAŻDEGO produktu. Podział 19/11 to logistyka, nie osobne produkty -> quantity to suma = 30. Zakres 160–170 jest węższy niż 20 zł -> wpisujemy tylko price_max=170.)
-
-Przykład 6
-E-mail: "Dzień dobry, Chciałbym zapytać, czy istnieje możliwość zamówienia 31 paczek dla pracowników tak, aby wysyłka została zrealizowana bezpośrednio przez Państwa na ich adresy. Obawiamy się, że nie zdążymy rozesłać ich sami przed świętami. Proszę o informację, czy takie rozwiązanie jest możliwe."
-Ekstrakcja: {"products": [], "deadline": null, "policy_questions": ["different_addreses", "delivery_time"], "intent": "browse"}
-(Uwaga: klient pyta wyłącznie o logistykę/możliwość, nie prosi o konkretny produkt ani propozycję -> intent="browse", products=[].)
-Zwróć TYLKO JSON zgodny ze schematem — bez komentarzy, bez markdown, bez tekstu poza JSON-em.
-"""
 
 INSTRUCTION_EXTRACTION = SYSTEM_EXTRACTION 
 
-#+ "\n\n" + FEWSHOT_EXTRACTION
 
 URL_RE = re.compile(r"https?://fabulosa\.pl/\S*?/(\d+)", re.IGNORECASE)
  
@@ -134,11 +99,7 @@ def postprocess_extraction(
  
     try:
         data = EmailExtraction.model_validate_json(raw_text)
-    except Exception:
-        # Malformed output from the model — let it pass through unchanged so
-        # ADK's own output_schema validation surfaces the real error, rather
-        # than masking it here. See adk-python issue #5008 for why this
-        # matters: don't let a callback swallow a bad parse silently.
+    except Exception 
         return None
  
     email_text = callback_context.state.get("email", "")
@@ -156,14 +117,6 @@ def postprocess_extraction(
     llm_response.content.parts[0].text = data.model_dump_json()
     return llm_response
 
-def order():
-    return "Not implemented yet"
-
-def inquiry():
-    return "Not implemented yet"
-
-def browse():
-    return "Not implemented yet"
 
 def normalise(node_input : str):
     return Event(state = {"clients_email" : node_input, "todays_date" : datetime.now()}, output= node_input)
@@ -338,7 +291,7 @@ def save_context(node_input : OfferValidation, ctx : Context):
 
 OFFER_TOKEN = "{Offer here}"
 
-INSTRUCTION_CLAUDE = f"""Jesteś pracownikiem działu handlowego. Piszesz odpowiedź e-mail do klienta B2B
+INSTRUCTION_RESPONSE_INQUIRY = f"""Jesteś pracownikiem działu handlowego. Piszesz odpowiedź e-mail do klienta B2B
 po polsku, w liczbie mnogiej ("przygotowaliśmy", "zapraszamy"), rzeczowo i uprzejmie.
 
 ## Dane wejściowe
@@ -413,7 +366,7 @@ Zasady:
 response_agent_inquiry = Agent(name = 'response_agent',
                        description= 'Creates partial response to the clients emails',
                        model = "gemini-3.5-flash",
-                       instruction=INSTRUCTION_CLAUDE
+                       instruction=INSTRUCTION_RESPONSE_INQUIRY
 )
 
 
