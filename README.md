@@ -2,7 +2,7 @@
 
 A multi-agent workflow built with **Google ADK** that reads incoming customer email, works out what the client wants, finds matching products in the catalog, and produces a **ready-to-send HTML reply** with a tailored product offer and answers to the client's policy questions.
 
-It was built around the catalog and inquiry patterns of **Fabulosa** ([fabulosa.pl](https://fabulosa.pl)), a Polish retailer of corporate gift baskets. During the Christmas season the sales team gets a flood of similar emails: *"30 non-alcoholic baskets up to 150 zł, can you deliver to several addresses?"* Each one used to need a person to read it, search the catalog, check prices and policy, and write a reply. This workflow automates that whole loop.
+It was built for a Polish retailer business of corporate gift baskets. During the Christmas season the sales team gets a flood of similar emails: *"30 non-alcoholic baskets up to 150 zł, can you deliver to several addresses?"* Each one used to need a person to read it, search the catalog, check prices and policy, and write a reply. This workflow automates that whole loop.
 
 Because of the fact that this was created as a product for a business, the whole code won't be shown. This is an overview of a project. 
 
