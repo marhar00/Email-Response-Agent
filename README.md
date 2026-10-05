@@ -1,8 +1,10 @@
-# AI Email Response Agent for B2B Gift-Basket Inquiries
+# Email Response Agent
 
-A multi-agent workflow built with **Google ADK** that reads incoming B2B customer emails (in Polish), works out what the client wants, finds matching products in the catalog, and produces a **ready-to-send HTML reply** with a tailored product offer and answers to the client's policy questions.
+A multi-agent workflow built with **Google ADK** that reads incoming customer email, works out what the client wants, finds matching products in the catalog, and produces a **ready-to-send HTML reply** with a tailored product offer and answers to the client's policy questions.
 
 It was built around the catalog and inquiry patterns of **Fabulosa** ([fabulosa.pl](https://fabulosa.pl)), a Polish retailer of corporate gift baskets. During the Christmas season the sales team gets a flood of similar emails: *"30 non-alcoholic baskets up to 150 zł, can you deliver to several addresses?"* Each one used to need a person to read it, search the catalog, check prices and policy, and write a reply. This workflow automates that whole loop.
+
+Because of the fact that this was created as a product for a business, the whole code won't be shown. This is an overview of a project. 
 
 ---
 
@@ -75,7 +77,7 @@ root_agent = Workflow(
 )
 ```
 
-LLM nodes and plain Python nodes are mixed in one graph. Each step uses whichever tool fits: the LLM where language understanding is needed, and code where the answer must be exact.
+LLM nodes and plain Python nodes are mixed in one graph. Each step uses whichever tool fits: the LLM where language understanding is needed, and code where the answer must be exact and we want to maximize the determinism of outputs. 
 
 ---
 
@@ -85,15 +87,13 @@ LLM nodes and plain Python nodes are mixed in one graph. Each step uses whicheve
 Puts the raw email (`clients_email`) and today's date (`todays_date`) into the shared session state, so every later agent can refer to them in its prompt template.
 
 ### 2. `extraction_agent` (LLM: `gemini-3.5-flash`)
-Turns free-form Polish email text into an `EmailExtraction` object (see [data models](#data-models-classespy)). The system prompt covers the edge cases that came up in real inquiries:
+Turns email text into an `EmailExtraction` object (see [data models](#data-models-classespy)). The system prompt covers the edge cases that came up in real inquiries:
 
 - **Separate constraints for each product.** "30 pcs up to 150 zł and 10 pcs up to 200 zł" becomes two products with different `price_max` values. One budget for the whole email is applied to every product.
 - **Logistics splits are not product splits.** "19 sets to individual addresses and 11 to our warehouse" stays one product with `quantity = 30`. Products are only split when they differ in price or type.
 - **Reference products.** "Something similar to SU42, SU44 and MC37" turns each referenced product into its own search entry with the same constraints, instead of collapsing them into one vague description.
 - **Intent decided in a fixed order.** Specific products with quantities count as `order`, even if the client writes "I'm interested" or asks about price. A description or a request for a proposal counts as `inquiry`, even if the client uses the word "order". Everything else is `browse`.
 - **Defaults.** An unspecified price basis is gross (`brutto`). A range such as "160–170 zł" becomes `price_min` / `price_max`.
-
-A set of six annotated few-shot examples (`FEWSHOT_EXTRACTION`) is kept in the file. Each pairs a real-style email with the correct JSON and explains the reasoning. They can be added back to the prompt when extraction needs more guidance.
 
 ### 3. `postprocess_extraction` (after-model callback)
 Runs on the raw model output before it leaves the agent:
@@ -140,12 +140,12 @@ Output is the structured `OfferValidation` model.
 ### 7. `response_agent_inquiry` (LLM: `gemini-3.5-flash`)
 Writes the email body in the voice of the sales department (formal Polish, first person plural), following a fixed structure: greeting, thanks, **a line containing only the `{Offer here}` token**, minimum-quantity note, policy answers in separate paragraphs, closing.
 
-It is explicitly forbidden from writing prices, product names, codes or links, and from saying that "the offer will follow later", because the offer is part of this same email.
+It is explicitly forbidden from writing prices, product names, codes or links, and from saying that "the offer will follow later", because the offer is part of this same email (This happened multiple times when it wasn't specified in the instruction).
 
 ### 8. `add_offer` (Python)
 - Splits the model's text at the `{Offer here}` token.
 - Builds the grouped HTML offer (`build_grouped_offer`) directly from `catalog.parquet` using the validated codes: product names, prices, images and links.
-- Joins everything into one HTML email (`text before + offer + text after`), and can optionally open a browser preview.
+- Joins everything into one HTML email (`text before + offer + text after`)
 
 ### Other paths
 - **`browse_agent`** replies to general questions using only the company policy text and the computed facts.
@@ -208,6 +208,8 @@ Field descriptions inside the models (for example *"Never set price_min equal to
 
 ## Project structure
 
+Recall that only 3 files from the project are in this repository.
+
 ```
 .
 ├── agent.py            # Workflow graph, LLM agents, prompts, routing and post-processing nodes
@@ -215,7 +217,7 @@ Field descriptions inside the models (for example *"Never set price_min equal to
 ├── node_offer.py       # create_proposals: price windows, alcohol mapping, semantic search per product
 ├── product_lookup.py   # search_by_description_openai: embedding search with filters
 ├── create_offer.py     # build_grouped_offer: renders the HTML offer from catalog rows
-├── render_html.py      # LLM text → HTML, optional browser preview
+├── render_html.py      # LLM text → HTML
 ├── finding_prices.py   # price_order tool used by order_agent
 ├── catalog.parquet     # Product catalog (code, name, description, prices, alcohol flags, images, links)
 ├── vectors_openai.npy  # Precomputed catalog embeddings (text-embedding-3-large)
@@ -237,44 +239,14 @@ Field descriptions inside the models (for example *"Never set price_min equal to
 
 ## Setup and running
 
-```bash
-# 1. Install dependencies
-pip install google-adk openai pandas numpy pyarrow pydantic python-dotenv
-
-# 2. Add API keys to a .env file
-echo "GOOGLE_API_KEY=..." >> .env
-echo "OPENAI_API_KEY=..." >> .env
-
-# 3. Make sure catalog.parquet and vectors_openai.npy are in the working directory
-
-# 4. Launch the ADK dev UI and paste a customer email into the chat
-adk web
-```
-
----
+The setup here won't be shown because this is an overview of the project and lack of necessary files will prevent anybody from successfully run the code. 
 
 ## Examples
 
-The `examples/` folder holds end-to-end runs. Each example contains:
-
-- `email.txt`: the incoming customer email
-- `extraction.json`: what the extraction agent produced
-- `reply.html`: the final email sent back to the client
-
-| Example | Intent | What it shows |
-|---|---|---|
-| *coming soon* | inquiry | Two budgets in one email → two separately searched product groups |
-| *coming soon* | inquiry | "Similar to SU42, SU44…" → reference products searched individually |
-| *coming soon* | browse | Logistics-only question answered from policy |
-| *coming soon* | order | Specific product codes with quantities → priced order reply |
+The `examples/` folder holds end-to-end runs. Each example contains a print screen of the website with the clients email and the response. 
 
 ---
 
 ## Known limitations and roadmap
 
-- **Order path is lighter than the inquiry path.** `order_agent` relies on the `price_order` tool. Stock checks and order confirmation are not implemented yet.
-- **Products given only as a URL** are not searched in `create_proposals` yet. The `product_id` is parsed but not looked up.
-- **Leaner context for the response agent.** It currently receives a summary of the selected proposals. Passing only group labels and quantities would cut input tokens further, since the offer is rendered separately anyway.
-- **Stricter guardrails.** Planned: check that every validator code exists in that group's retrieval results, and scan the LLM's email text for price-like strings before sending.
-- **Align `save_context` with `group_index`.** Matching selections to proposals by `group_index` instead of list position would stay correct when a group is dropped during deduplication.
-- **Evaluation set.** Build a labelled set of real-style emails to measure extraction accuracy and intent classification as prompts change.
+- **Evaluation set.** Build a labelled set of real-style emails to measure extraction accuracy and intent classification as prompts change. 
