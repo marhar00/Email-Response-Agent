@@ -28,8 +28,7 @@ def alcohol_arg(state):
             }.get(state, None)
 
 def if_correct_alcohol(product, offer,df):
-    # product is a dict from the extract_email about this product and the offer are the products 
-    # that were proposed. we need to check semanticly if the products have the right alcohol
+    """ we check if the offered products have the right alcohol"""
     correct_offer = []
     for code in offer:
         row = df[df["code"] == code]
@@ -55,9 +54,7 @@ model_offer = MODEL_OFFER
 
 
 def create_proposals(node_input : EmailExtraction, ctx : Context):
-    # Normalize node_input: depending on how this graph API's output_schema
-    # handling actually behaves, this may arrive as an EmailExtraction
-    # instance or as a plain dict. Handle both rather than guessing.
+
     if isinstance(node_input, EmailExtraction):
         extraction = node_input
     else:
